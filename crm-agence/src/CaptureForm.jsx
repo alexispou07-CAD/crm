@@ -1,8 +1,35 @@
 import React, { useState } from "react";
-import { Mail, Phone, User, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, User, MapPin, CheckCircle2 } from "lucide-react";
 
 const SUPABASE_URL = "https://iwqokzqtbyxsfbxyauoj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_HrklaTc7GNLChVpYewxEgA_dpxPQuJ3";
+
+const VARIANTS = {
+  default: {
+    heading: "Parlons de ton projet",
+    subtitle: "Laisse-nous tes coordonnées, on te recontacte rapidement.",
+    source: "Page de capture",
+    role: null,
+    showAddress: false,
+    thanks: "On a bien reçu tes coordonnées. Quelqu'un va te recontacter très bientôt.",
+  },
+  estimation: {
+    heading: "Estimation gratuite de ma propriété",
+    subtitle: "Dis-nous-en un peu plus, un agent te recontacte avec une estimation.",
+    source: "Page de capture - Estimation",
+    role: "vendeur",
+    showAddress: true,
+    thanks: "On a bien reçu ta demande. Un agent te recontacte avec ton estimation très bientôt.",
+  },
+  location: {
+    heading: "Faire une demande de location",
+    subtitle: "Laisse-nous tes coordonnées, on te recontacte pour organiser une visite.",
+    source: "Page de capture - Location",
+    role: "locataire",
+    showAddress: false,
+    thanks: "On a bien reçu ta demande. On te recontacte très bientôt pour organiser une visite.",
+  },
+};
 
 // --- Même validation anti faux courriel / faux téléphone que le CRM ---
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -41,8 +68,9 @@ const inputStyle = (hasError) => ({
   borderRadius: "8px", padding: "13px 14px", color: "#F5F3EE", fontSize: "15px", boxSizing: "border-box",
 });
 
-export default function CaptureForm() {
-  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+export default function CaptureForm({ variant = "default" }) {
+  const config = VARIANTS[variant] || VARIANTS.default;
+  const [form, setForm] = useState({ name: "", email: "", phone: "", address: "" });
   const [errors, setErrors] = useState({});
   const [status, setStatus] = useState("idle"); // idle | sending | done | error
 
@@ -56,6 +84,7 @@ export default function CaptureForm() {
       errs.email = "Courriel ou téléphone requis";
       errs.phone = "Courriel ou téléphone requis";
     }
+    if (config.showAddress && !form.address.trim()) errs.address = "L'adresse est requise";
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
@@ -73,8 +102,10 @@ export default function CaptureForm() {
           name: form.name.trim(),
           email: form.email.trim(),
           Phone: form.phone.trim(),
-          Source: "Page de capture",
+          Source: config.source,
           Stage: "nouveau",
+          role: config.role,
+          address: config.showAddress ? form.address.trim() : undefined,
         }),
       });
       if (!res.ok) throw new Error("Erreur d'envoi");
@@ -90,7 +121,7 @@ export default function CaptureForm() {
         <div style={{ textAlign: "center", maxWidth: "360px" }}>
           <CheckCircle2 size={44} color="#5FA37B" style={{ marginBottom: "16px" }} />
           <div style={{ fontSize: "22px", fontWeight: 700, marginBottom: "8px" }}>Merci !</div>
-          <div style={{ fontSize: "14px", color: "#9298A8" }}>On a bien reçu tes coordonnées. Quelqu'un va te recontacter très bientôt.</div>
+          <div style={{ fontSize: "14px", color: "#9298A8" }}>{config.thanks}</div>
         </div>
       </div>
     );
@@ -103,10 +134,10 @@ export default function CaptureForm() {
           Nebelon
         </div>
         <div style={{ fontSize: "26px", fontWeight: 700, marginBottom: "8px", textAlign: "center", letterSpacing: "-0.02em" }}>
-          Parlons de ton projet
+          {config.heading}
         </div>
         <div style={{ fontSize: "14px", color: "#9298A8", marginBottom: "28px", textAlign: "center" }}>
-          Laisse-nous tes coordonnées, on te recontacte rapidement.
+          {config.subtitle}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -131,6 +162,16 @@ export default function CaptureForm() {
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={inputStyle(errors.phone)} placeholder="514-555-0123" />
             {errors.phone && <div style={{ fontSize: "12px", color: "#D9705A", marginTop: "4px" }}>{errors.phone}</div>}
           </div>
+
+          {config.showAddress && (
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", fontSize: "12px", color: "#9298A8" }}>
+                <MapPin size={13} /> Adresse de la propriété
+              </div>
+              <input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} style={inputStyle(errors.address)} placeholder="123 rue Principale, Montréal" />
+              {errors.address && <div style={{ fontSize: "12px", color: "#D9705A", marginTop: "4px" }}>{errors.address}</div>}
+            </div>
+          )}
 
           {status === "error" && <div style={{ fontSize: "13px", color: "#D9705A" }}>Une erreur est survenue, réessaie.</div>}
 
