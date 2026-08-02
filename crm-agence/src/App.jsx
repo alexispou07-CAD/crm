@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Plus, X, Mail, Phone, Clock, ChevronRight, Trash2, User, LogOut } from "lucide-react";
+import { Plus, X, Mail, Phone, Clock, ChevronRight, Trash2, User, LogOut, MapPin } from "lucide-react";
 
 const SUPABASE_URL = "https://iwqokzqtbyxsfbxyauoj.supabase.co";
 const SUPABASE_KEY = "sb_publishable_HrklaTc7GNLChVpYewxEgA_dpxPQuJ3";
 
 const STAGES = [
-  { key: "nouveau", label: "Nouveau", color: "#E8A33D" },
-  { key: "contacte", label: "Contacté", color: "#7DA9C9" },
-  { key: "qualifie", label: "Qualifié", color: "#B98FD1" },
-  { key: "client", label: "Client", color: "#5FA37B" },
+  { key: "nouveau", label: "Nouveau lead", color: "#E8A33D" },
+  { key: "contact_etabli", label: "Contact établi", color: "#7DA9C9" },
+  { key: "visite_planifiee", label: "Visite planifiée", color: "#B98FD1" },
+  { key: "offre_bail", label: "Offre/Bail", color: "#D19A4C" },
+  { key: "vendu_loue", label: "Vendu/Loué", color: "#5FA37B" },
   { key: "perdu", label: "Perdu", color: "#6B7280" },
 ];
 
-const SOURCES = ["Site web", "Référence", "Réseaux sociaux", "Publicité", "Autre"];
+const SOURCES = ["Centris/MLS", "Facebook Ads", "Référencement", "Panneau", "Site web", "Bouche-à-oreille"];
+
+const ROLES = ["acheteur", "vendeur", "locataire", "proprietaire"];
+const ROLE_LABELS = { acheteur: "Acheteur", vendeur: "Vendeur", locataire: "Locataire", proprietaire: "Propriétaire" };
 
 // --- Notification system ---
 const useNotification = () => {
@@ -210,7 +214,7 @@ export default function CRM() {
   const [activeNotes, setActiveNotes] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [noteText, setNoteText] = useState("");
-  const [form, setForm] = useState({ name: "", email: "", phone: "", source: SOURCES[0] });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", source: SOURCES[0], role: ROLES[0] });
   const [errors, setErrors] = useState({});
   const { notification, show: showNotif } = useNotification();
 
@@ -262,10 +266,10 @@ export default function CRM() {
     try {
       const [created] = await apiPost("Leads", {
         name: form.name.trim(), email: form.email.trim(), Phone: form.phone.trim(),
-        Source: form.source, Stage: "nouveau",
+        Source: form.source, Stage: "nouveau", role: form.role,
       }, session.token);
       setLeads([created, ...leads]);
-      setForm({ name: "", email: "", phone: "", source: SOURCES[0] });
+      setForm({ name: "", email: "", phone: "", source: SOURCES[0], role: ROLES[0] });
       setErrors({});
       setShowForm(false);
       showNotif("Lead ajouté avec succès", "success");
@@ -424,6 +428,9 @@ export default function CRM() {
               <select value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} style={inputStyle(false)}>
                 {SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} style={inputStyle(false)}>
+                {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </select>
               <button onClick={addLead} style={{ background: "#E8A33D", color: "#12141C", border: "none", borderRadius: "8px", padding: "10px", fontWeight: 600, fontSize: "13px", cursor: "pointer", marginTop: "6px" }}>
                 Ajouter
               </button>
@@ -446,6 +453,8 @@ export default function CRM() {
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", color: "#C7CBD6", marginBottom: "18px" }}>
               {active.email && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Mail size={14} color="#6B7280" /> {active.email}</div>}
               {active.Phone && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} color="#6B7280" /> {active.Phone}</div>}
+              {active.role && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><User size={14} color="#6B7280" /> Rôle : {ROLE_LABELS[active.role] || active.role}</div>}
+              {active.address && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><MapPin size={14} color="#6B7280" /> Adresse : {active.address}</div>}
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><User size={14} color="#6B7280" /> Source : {active.Source}</div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} color="#6B7280" /> Créé le {fmtDate(active.created_at)}</div>
             </div>
