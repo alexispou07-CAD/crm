@@ -61,7 +61,7 @@ export default function CaptureForm() {
 
     setStatus("sending");
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/Leads`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_KEY,
@@ -72,9 +72,9 @@ export default function CaptureForm() {
         body: JSON.stringify({
           name: form.name.trim(),
           email: form.email.trim(),
-          phone: form.phone.trim(),
-          source: "Page de capture",
-          stage: "nouveau",
+          Phone: form.phone.trim(),
+          Source: "Page de capture",
+          Stage: "nouveau",
         }),
       });
       if (!res.ok) throw new Error("Erreur d'envoi");

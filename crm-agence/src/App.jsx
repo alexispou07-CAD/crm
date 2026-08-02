@@ -174,7 +174,7 @@ export default function CRM() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [activeId, setActiveId] = useState(null);
+  const [activeName, setActiveName] = useState(null);
   const [activeNotes, setActiveNotes] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -184,7 +184,7 @@ export default function CRM() {
   const loadLeads = async (token) => {
     setLoading(true); setLoadError("");
     try {
-      const data = await apiGet("leads?select=*&order=created_at.desc", token);
+      const data = await apiGet("Leads?select=*&order=created_at.desc", token);
       setLeads(data);
     } catch (e) {
       setLoadError("Impossible de charger les leads. " + e.message);
@@ -200,17 +200,17 @@ export default function CRM() {
   const counts = useMemo(() => {
     const c = {};
     STAGES.forEach((s) => (c[s.key] = 0));
-    leads.forEach((l) => (c[l.stage] = (c[l.stage] || 0) + 1));
+    leads.forEach((l) => (c[l.Stage] = (c[l.Stage] || 0) + 1));
     return c;
   }, [leads]);
 
   const total = leads.length || 1;
-  const active = leads.find((l) => l.id === activeId);
+  const active = leads.find((l) => l.name === activeName);
 
   useEffect(() => {
     if (!active || !session) { setActiveNotes([]); return; }
-    apiGet(`notes?lead_id=eq.${active.id}&order=created_at.desc`, session.token).then(setActiveNotes).catch(() => setActiveNotes([]));
-  }, [activeId, session]);
+    apiGet(`Notes?lead_id=eq.${encodeURIComponent(active.name)}&order=created_at.desc`, session.token).then(setActiveNotes).catch(() => setActiveNotes([]));
+  }, [activeName, session]);
 
   const addLead = async () => {
     const errs = {};
@@ -225,9 +225,9 @@ export default function CRM() {
     if (Object.keys(errs).length > 0) return;
 
     try {
-      const [created] = await apiPost("leads", {
-        name: form.name.trim(), email: form.email.trim(), phone: form.phone.trim(),
-        source: form.source, stage: "nouveau",
+      const [created] = await apiPost("Leads", {
+        name: form.name.trim(), email: form.email.trim(), Phone: form.phone.trim(),
+        Source: form.source, Stage: "nouveau",
       }, session.token);
       setLeads([created, ...leads]);
       setForm({ name: "", email: "", phone: "", source: SOURCES[0] });
@@ -238,30 +238,30 @@ export default function CRM() {
     }
   };
 
-  const moveStage = async (id, dir) => {
-    const lead = leads.find((l) => l.id === id);
-    const idx = STAGES.findIndex((s) => s.key === lead.stage);
+  const moveStage = async (name, dir) => {
+    const lead = leads.find((l) => l.name === name);
+    const idx = STAGES.findIndex((s) => s.key === lead.Stage);
     const nextIdx = Math.min(STAGES.length - 1, Math.max(0, idx + dir));
     const nextStage = STAGES[nextIdx].key;
-    setLeads(leads.map((l) => (l.id === id ? { ...l, stage: nextStage } : l)));
-    try { await apiPatch(`leads?id=eq.${id}`, { stage: nextStage }, session.token); } catch (e) { /* silencieux, déjà mis à jour visuellement */ }
+    setLeads(leads.map((l) => (l.name === name ? { ...l, Stage: nextStage } : l)));
+    try { await apiPatch(`Leads?name=eq.${encodeURIComponent(name)}`, { Stage: nextStage }, session.token); } catch (e) { /* silencieux, déjà mis à jour visuellement */ }
   };
 
-  const setStage = async (id, stage) => {
-    setLeads(leads.map((l) => (l.id === id ? { ...l, stage } : l)));
-    try { await apiPatch(`leads?id=eq.${id}`, { stage }, session.token); } catch (e) {}
+  const setStage = async (name, stage) => {
+    setLeads(leads.map((l) => (l.name === name ? { ...l, Stage: stage } : l)));
+    try { await apiPatch(`Leads?name=eq.${encodeURIComponent(name)}`, { Stage: stage }, session.token); } catch (e) {}
   };
 
-  const deleteLead = async (id) => {
-    setLeads(leads.filter((l) => l.id !== id));
-    if (activeId === id) setActiveId(null);
-    try { await apiDelete(`leads?id=eq.${id}`, session.token); } catch (e) {}
+  const deleteLead = async (name) => {
+    setLeads(leads.filter((l) => l.name !== name));
+    if (activeName === name) setActiveName(null);
+    try { await apiDelete(`Leads?name=eq.${encodeURIComponent(name)}`, session.token); } catch (e) {}
   };
 
   const addNote = async () => {
     if (!noteText.trim() || !active) return;
     try {
-      const [created] = await apiPost("notes", { lead_id: active.id, text: noteText.trim() }, session.token);
+      const [created] = await apiPost("Notes", { lead_id: active.name, text: noteText.trim() }, session.token);
       setActiveNotes([created, ...activeNotes]);
       setNoteText("");
     } catch (e) {}
@@ -317,20 +317,20 @@ export default function CRM() {
               <span style={{ fontSize: "12px", color: "#6B7280", marginLeft: "auto" }}>{counts[stage.key]}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {leads.filter((l) => l.stage === stage.key).map((lead) => (
-                <div key={lead.id} onClick={() => setActiveId(lead.id)} style={{ background: "#20242F", border: "1px solid #2A2E3A", borderRadius: "8px", padding: "10px", cursor: "pointer" }}>
+              {leads.filter((l) => l.Stage === stage.key).map((lead) => (
+                <div key={lead.name} onClick={() => setActiveName(lead.name)} style={{ background: "#20242F", border: "1px solid #2A2E3A", borderRadius: "8px", padding: "10px", cursor: "pointer" }}>
                   <div style={{ fontSize: "13px", fontWeight: 600, marginBottom: "4px" }}>{lead.name}</div>
-                  <div style={{ fontSize: "11px", color: "#9298A8", marginBottom: "8px" }}>{lead.source}</div>
+                  <div style={{ fontSize: "11px", color: "#9298A8", marginBottom: "8px" }}>{lead.Source}</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: "10px", color: "#6B7280" }}>{fmtDate(lead.created_at)}</span>
                     <div style={{ display: "flex", gap: "4px" }}>
                       {colIdx > 0 && (
-                        <button onClick={(e) => { e.stopPropagation(); moveStage(lead.id, -1); }} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer", padding: "2px", transform: "rotate(180deg)" }}>
+                        <button onClick={(e) => { e.stopPropagation(); moveStage(lead.name, -1); }} style={{ background: "none", border: "none", color: "#6B7280", cursor: "pointer", padding: "2px", transform: "rotate(180deg)" }}>
                           <ChevronRight size={14} />
                         </button>
                       )}
                       {colIdx < STAGES.length - 1 && (
-                        <button onClick={(e) => { e.stopPropagation(); moveStage(lead.id, 1); }} style={{ background: "none", border: "none", color: "#E8A33D", cursor: "pointer", padding: "2px" }}>
+                        <button onClick={(e) => { e.stopPropagation(); moveStage(lead.name, 1); }} style={{ background: "none", border: "none", color: "#E8A33D", cursor: "pointer", padding: "2px" }}>
                           <ChevronRight size={14} />
                         </button>
                       )}
@@ -338,7 +338,7 @@ export default function CRM() {
                   </div>
                 </div>
               ))}
-              {leads.filter((l) => l.stage === stage.key).length === 0 && (
+              {leads.filter((l) => l.Stage === stage.key).length === 0 && (
                 <div style={{ fontSize: "12px", color: "#4B5060", padding: "8px 2px" }}>Aucun lead ici</div>
               )}
             </div>
@@ -378,26 +378,26 @@ export default function CRM() {
       )}
 
       {active && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end", zIndex: 40 }} onClick={() => setActiveId(null)}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "flex-end", zIndex: 40 }} onClick={() => setActiveName(null)}>
           <div style={{ background: "#1A1D28", width: "340px", maxWidth: "90vw", height: "100%", padding: "22px", overflowY: "auto", borderLeft: "1px solid #2A2E3A" }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "18px" }}>
               <div>
                 <div style={{ fontSize: "18px", fontWeight: 700 }}>{active.name}</div>
-                <div style={{ fontSize: "12px", color: stageOf(active.stage).color, marginTop: "4px" }}>{stageOf(active.stage).label}</div>
+                <div style={{ fontSize: "12px", color: stageOf(active.Stage).color, marginTop: "4px" }}>{stageOf(active.Stage).label}</div>
               </div>
-              <button onClick={() => setActiveId(null)} style={{ background: "none", border: "none", color: "#9298A8", cursor: "pointer" }}><X size={18} /></button>
+              <button onClick={() => setActiveName(null)} style={{ background: "none", border: "none", color: "#9298A8", cursor: "pointer" }}><X size={18} /></button>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px", color: "#C7CBD6", marginBottom: "18px" }}>
               {active.email && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Mail size={14} color="#6B7280" /> {active.email}</div>}
-              {active.phone && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} color="#6B7280" /> {active.phone}</div>}
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><User size={14} color="#6B7280" /> Source : {active.source}</div>
+              {active.Phone && <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Phone size={14} color="#6B7280" /> {active.Phone}</div>}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><User size={14} color="#6B7280" /> Source : {active.Source}</div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}><Clock size={14} color="#6B7280" /> Créé le {fmtDate(active.created_at)}</div>
             </div>
 
             <div style={{ marginBottom: "18px" }}>
               <label style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#6B7280" }}>Changer l'étape</label>
-              <select value={active.stage} onChange={(e) => setStage(active.id, e.target.value)} style={{ ...inputStyle(false), marginTop: "6px" }}>
+              <select value={active.Stage} onChange={(e) => setStage(active.name, e.target.value)} style={{ ...inputStyle(false), marginTop: "6px" }}>
                 {STAGES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
               </select>
             </div>
@@ -419,7 +419,7 @@ export default function CRM() {
               <button onClick={addNote} style={{ flex: 1, background: "#E8A33D", color: "#12141C", border: "none", borderRadius: "8px", padding: "9px", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>
                 Ajouter la note
               </button>
-              <button onClick={() => deleteLead(active.id)} style={{ background: "#20242F", border: "1px solid #2A2E3A", color: "#D9705A", borderRadius: "8px", padding: "9px 12px", cursor: "pointer" }}>
+              <button onClick={() => deleteLead(active.name)} style={{ background: "#20242F", border: "1px solid #2A2E3A", color: "#D9705A", borderRadius: "8px", padding: "9px 12px", cursor: "pointer" }}>
                 <Trash2 size={14} />
               </button>
             </div>
