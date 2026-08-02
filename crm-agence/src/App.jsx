@@ -14,6 +14,16 @@ const STAGES = [
 
 const SOURCES = ["Site web", "Référence", "Réseaux sociaux", "Publicité", "Autre"];
 
+// --- Notification system ---
+const useNotification = () => {
+  const [notification, setNotification] = React.useState(null);
+  const show = (message, type = "info", duration = 4000) => {
+    setNotification({ message, type });
+    if (duration) setTimeout(() => setNotification(null), duration);
+  };
+  return { notification, show };
+};
+
 // --- Validation anti faux courriel / faux téléphone ---
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const FAKE_LOCALS = ["test", "asdf", "admin", "none", "na", "xxx", "fake", "sample", "user", "email", "abc", "asd", "qwerty", "nom", "exemple", "example", "faux"];
@@ -184,6 +194,7 @@ export default function CRM() {
   const [noteText, setNoteText] = useState("");
   const [form, setForm] = useState({ name: "", email: "", phone: "", source: SOURCES[0] });
   const [errors, setErrors] = useState({});
+  const { notification, show: showNotif } = useNotification();
 
   const loadLeads = async (token) => {
     setLoading(true); setLoadError("");
@@ -237,8 +248,11 @@ export default function CRM() {
       setForm({ name: "", email: "", phone: "", source: SOURCES[0] });
       setErrors({});
       setShowForm(false);
+      showNotif("Lead ajouté avec succès", "success");
     } catch (e) {
-      setErrors({ name: "Erreur d'enregistrement : " + e.message });
+      const msg = e.message || "Erreur d'enregistrement";
+      setErrors({ name: msg });
+      showNotif(msg, "error");
     }
   };
 
@@ -259,7 +273,12 @@ export default function CRM() {
   const deleteLead = async (name) => {
     setLeads(leads.filter((l) => l.name !== name));
     if (activeName === name) setActiveName(null);
-    try { await apiDelete(`Leads?name=eq.${encodeURIComponent(name)}`, session.token); } catch (e) {}
+    try { 
+      await apiDelete(`Leads?name=eq.${encodeURIComponent(name)}`, session.token);
+      showNotif("Lead supprimé", "success");
+    } catch (e) { 
+      showNotif("Erreur : " + e.message, "error");
+    }
   };
 
   const addNote = async () => {
@@ -268,7 +287,11 @@ export default function CRM() {
       const [created] = await apiPost("Notes", { lead_id: active.name, text: noteText.trim() }, session.token);
       setActiveNotes([created, ...activeNotes]);
       setNoteText("");
-    } catch (e) { console.error("addNote failed:", e); }
+      showNotif("Note ajoutée", "success");
+    } catch (e) { 
+      showNotif("Erreur : " + e.message, "error");
+      console.error("addNote failed:", e); 
+    }
   };
 
   const fmtDate = (ts) => new Date(ts).toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" });
@@ -278,6 +301,11 @@ export default function CRM() {
 
   return (
     <div style={{ background: "#12141C", color: "#F5F3EE", fontFamily: "ui-sans-serif, system-ui, sans-serif", minHeight: "700px", padding: "28px 24px", borderRadius: "12px" }}>
+      {notification && (
+        <div style={{ position: "fixed", top: "20px", right: "20px", background: notification.type === "error" ? "#D9705A" : "#5FA37B", color: "#FFF", padding: "12px 16px", borderRadius: "8px", fontSize: "13px", zIndex: 100, maxWidth: "300px", boxShadow: "0 4px 12px rgba(0,0,0,0.3)" }}>
+          {notification.message}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "22px", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <div style={{ fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", color: "#E8A33D", fontWeight: 600, marginBottom: "6px" }}>
