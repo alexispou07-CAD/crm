@@ -261,10 +261,10 @@ export default function CRM() {
   const addNote = async () => {
     if (!noteText.trim() || !active) return;
     try {
-      const [created] = await apiPost("Notes", { lead_id: active.name, text: noteText.trim() }, session.token);
+      const [created] = await apiPost("Notes", { lead_Name: active.name, Text: noteText.trim() }, session.token);
       setActiveNotes([created, ...activeNotes]);
       setNoteText("");
-    } catch (e) {}
+    } catch (e) { console.error("Note error:", e); }
   };
 
   const fmtDate = (ts) => new Date(ts).toLocaleDateString("fr-CA", { day: "numeric", month: "short", year: "numeric" });
