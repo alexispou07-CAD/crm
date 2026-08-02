@@ -24,6 +24,24 @@ const useNotification = () => {
   return { notification, show };
 };
 
+// --- Logging function ---
+async function logError(session, eventType, message, errorCode) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/Logs`, {
+      method: "POST",
+      headers: { ...authHeaders(session?.token), Prefer: "return=representation" },
+      body: JSON.stringify({ 
+        user_id: session?.email || "anonymous",
+        event_type: eventType, 
+        message, 
+        error_code: errorCode 
+      }),
+    });
+  } catch (e) {
+    // Silencieux : pas d'erreur si le logging échoue
+  }
+}
+
 // --- Validation anti faux courriel / faux téléphone ---
 const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const FAKE_LOCALS = ["test", "asdf", "admin", "none", "na", "xxx", "fake", "sample", "user", "email", "abc", "asd", "qwerty", "nom", "exemple", "example", "faux"];
@@ -202,7 +220,9 @@ export default function CRM() {
       const data = await apiGet("Leads?select=*&order=created_at.desc", token);
       setLeads(data);
     } catch (e) {
-      setLoadError("Impossible de charger les leads. " + e.message);
+      const msg = "Impossible de charger les leads. " + e.message;
+      setLoadError(msg);
+      logError(session, "leads_load_failed", msg, "LEADS_LOAD_ERROR");
     } finally {
       setLoading(false);
     }
@@ -253,6 +273,7 @@ export default function CRM() {
       const msg = e.message || "Erreur d'enregistrement";
       setErrors({ name: msg });
       showNotif(msg, "error");
+      logError(session, "lead_creation_failed", msg, "LEAD_CREATE_ERROR");
     }
   };
 
@@ -278,6 +299,7 @@ export default function CRM() {
       showNotif("Lead supprimé", "success");
     } catch (e) { 
       showNotif("Erreur : " + e.message, "error");
+      logError(session, "lead_deletion_failed", e.message, "LEAD_DELETE_ERROR");
     }
   };
 
@@ -290,6 +312,7 @@ export default function CRM() {
       showNotif("Note ajoutée", "success");
     } catch (e) { 
       showNotif("Erreur : " + e.message, "error");
+      logError(session, "note_creation_failed", e.message, "NOTE_CREATE_ERROR");
       console.error("addNote failed:", e); 
     }
   };
